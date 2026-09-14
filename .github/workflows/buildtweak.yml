@@ -1,0 +1,75 @@
+# Build just the tweak as a rootless .deb -- no decrypted ipa needed.
+#
+# The upstream workflow (main.yml) only builds a merged ipa, which requires supplying a
+# decrypted YouTube Music. For LiveContainer the tweak alone is what gets installed, so
+# this builds the same .deb that the upstream releases ship.
+name: Build YTMusicUltimate tweak (rootless)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build rootless .deb
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: main
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install make ldid dpkg
+
+      - name: Set PATH
+        run: |
+          echo "$(brew --prefix make)/libexec/gnubin" >> $GITHUB_PATH
+          echo "THEOS=${{ github.workspace }}/theos" >> $GITHUB_ENV
+
+      - name: Cache Theos
+        id: theos
+        uses: actions/cache@v4
+        env:
+          cache-name: theos_cache_344ee59
+        with:
+          path: theos/
+          key: ${{ env.cache-name }}
+          restore-keys: ${{ env.cache-name }}
+
+      - name: Setup Theos
+        if: steps.theos.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: theos/theos
+          ref: 344ee5925df036dbd1312b783ad5a00d153c2445
+          path: theos
+          submodules: recursive
+
+      - name: Download iOS SDK
+        if: steps.theos.outputs.cache-hit != 'true'
+        run: |
+          git clone --quiet -n --depth=1 --filter=tree:0 https://github.com/theos/sdks.git
+          cd sdks
+          git sparse-checkout set --no-cone iPhoneOS16.5.sdk
+          git checkout
+          mv *.sdk $THEOS/sdks
+
+      - name: Build tweak
+        run: |
+          cd main
+          make clean package DEBUG=0 FINALPACKAGE=1 ROOTLESS=1
+          ls -la packages/
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: ytmusicultimate-rootless-deb
+          path: main/packages/*.deb
+          if-no-files-found: error
