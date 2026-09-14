@@ -12,10 +12,39 @@
 #import "Headers/YTIFormatStream.h"
 #import "Headers/YTAlertView.h"
 #import "Headers/ELMNodeController.h"
+#import <objc/message.h>
 
 static BOOL YTMU(NSString *key) {
     NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
     return [YTMUltimateDict[key] boolValue];
+}
+
+// YouTube Music moves the player response off YTPlayerViewController from time to time.
+// Reading a property that is no longer there does not come back nil, it throws:
+//
+//   -[YTPlayerViewController playerResponse]: unrecognized selector sent to instance
+//
+// so every accessor is checked before it is called, and the names it has used are tried
+// in turn. Returns nil when none of them are there, which the callers already handle.
+static YTPlayerResponse *YTMUPlayerResponse(YTPlayerViewController *playerVC) {
+    if (!playerVC) return nil;
+
+    static NSArray<NSString *> *names = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        names = @[@"playerResponse", @"currentPlayerResponse", @"lastPlayerResponse", @"playerData"];
+    });
+
+    for (NSString *name in names) {
+        SEL selector = NSSelectorFromString(name);
+        if (![playerVC respondsToSelector:selector]) continue;
+
+        id value = ((id (*)(id, SEL))objc_msgSend)(playerVC, selector);
+        if (value) return value;
+    }
+
+    NSLog(@"[YTMusicUltimate] no player response accessor on %@", NSStringFromClass([playerVC class]));
+    return nil;
 }
 
 @interface UIView ()
@@ -54,7 +83,7 @@ static BOOL YTMU(NSString *key) {
     YTMNowPlayingViewController *playingVC = (YTMNowPlayingViewController *)tapRecognizer.view._viewControllerForAncestor;
     YTMWatchViewController *watchVC = (YTMWatchViewController *)playingVC.parentViewController;
     YTPlayerViewController *playerVC = watchVC.playerViewController;
-    YTPlayerResponse *playerResponse = playerVC.playerResponse;
+    YTPlayerResponse *playerResponse = YTMUPlayerResponse(playerVC);
 
     if (playerResponse) {
         YTMActionSheetController *sheetController = [%c(YTMActionSheetController) musicActionSheetController];
@@ -90,7 +119,7 @@ static BOOL YTMU(NSString *key) {
 
 %new
 - (void)downloadAudio:(YTPlayerViewController *)playerVC {
-    YTPlayerResponse *playerResponse = playerVC.playerResponse;
+    YTPlayerResponse *playerResponse = YTMUPlayerResponse(playerVC);
 
     NSString *title = [playerResponse.playerData.videoDetails.title stringByReplacingOccurrencesOfString:@"/" withString:@""];
     NSString *author = [playerResponse.playerData.videoDetails.author stringByReplacingOccurrencesOfString:@"/" withString:@""];
@@ -156,7 +185,7 @@ static BOOL YTMU(NSString *key) {
         hud.mode = MBProgressHUDModeIndeterminate;
     });
 
-    YTPlayerResponse *playerResponse = playerVC.playerResponse;
+    YTPlayerResponse *playerResponse = YTMUPlayerResponse(playerVC);
 
     NSMutableArray *thumbnailsArray = playerResponse.playerData.videoDetails.thumbnail.thumbnailsArray;
     YTIThumbnailDetails_Thumbnail *thumbnail = [thumbnailsArray lastObject];
