@@ -59,7 +59,8 @@
     } if (section == 3) {
         NSDictionary *infoDictionary = [[NSBundle mainBundle] infoDictionary];
         NSString *appVersion = infoDictionary[@"CFBundleShortVersionString"];
-        return [NSString stringWithFormat:@"\nYouTubeMusic: v%@\nYTMusicUltimate: v%@", appVersion, @(OS_STRINGIFY(TWEAK_VERSION))];
+        // 末尾の印はこの fork の版。どの .dylib が読み込まれているかを画面で確かめられる
+        return [NSString stringWithFormat:@"\nYouTubeMusic: v%@\nYTMusicUltimate: v%@ (ja-v4)", appVersion, @(OS_STRINGIFY(TWEAK_VERSION))];
     }
 
     return nil;

@@ -224,18 +224,8 @@ static NSString *const kYTMUJAValues[] = {
     @"はい",
 };
 
-BOOL YTMUPrefersJapanese(void) {
-    static BOOL japanese = NO;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSString *lang = [[NSLocale preferredLanguages] firstObject] ?: @"";
-        japanese = [lang hasPrefix:@"ja"];
-    });
-    return japanese;
-}
-
 NSString *YTMUEmbeddedJapanese(NSString *key) {
-    if (!key || !YTMUPrefersJapanese()) return nil;
+    if (!key) return nil;
 
     static NSDictionary<NSString *, NSString *> *table = nil;
     static dispatch_once_t onceToken;
