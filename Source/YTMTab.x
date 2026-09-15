@@ -4,6 +4,9 @@
 #import "Headers/YTAssetLoader.h"
 #import "Prefs/YTMDownloads.h"
 
+// Same icons, compiled in (YTMUEmbeddedImages.m, generated).
+extern UIImage *YTMUEmbeddedImage(NSString *name);
+
 static BOOL YTMU(NSString *key) {
     NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
     return [YTMUltimateDict[key] boolValue];
@@ -15,8 +18,19 @@ static BOOL YTMU(NSString *key) {
         NSString *imageName = isSelected ? @"icons/downloads_selected" : @"icons/downloads";
         if (type == 2) imageName = isSelected ? @"icons/downloads_cairo_selected" : @"icons/downloads_cairo";
 
-        YTAssetLoader *al = [[%c(YTAssetLoader) alloc] initWithBundle:NSBundle.ytmu_defaultBundle];
-        return [al imageNamed:imageName];
+        UIImage *image = nil;
+
+        NSBundle *bundle = NSBundle.ytmu_defaultBundle;
+        if (bundle) {
+            YTAssetLoader *al = [[%c(YTAssetLoader) alloc] initWithBundle:bundle];
+            image = [al imageNamed:imageName];
+        }
+
+        // The tab this draws is one the tweak adds, so there is no sensible original to
+        // fall back to: without the resource bundle the tab would simply have no icon.
+        if (!image) image = YTMUEmbeddedImage(imageName);
+
+        if (image) return image;
     }
 
     return %orig;
