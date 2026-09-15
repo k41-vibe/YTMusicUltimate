@@ -3,6 +3,7 @@
 #import "Headers/YTMWatchViewController.h"
 #import "Headers/YTPivotBarViewController.h"
 #import "Headers/YTPlayabilityResolutionUserActionUIController.h"
+#import "Headers/SafeKVC.h"
 
 @interface YTPlayabilityResolutionUserActionUIControllerImpl : NSObject
 - (void)confirmAlertDidPressConfirm;
@@ -108,7 +109,7 @@ BOOL isTabSelected = NO;
         [self resetMiniplayerRestrictions];
     }
     // Disable auto-pause when player minimized to miniplayer
-    [self setValue:@(NO) forKey:@"_pauseOnMinimize"];
+    ytmu_safeSetValue(self, @"_pauseOnMinimize", @(NO));
 }
 %end
 

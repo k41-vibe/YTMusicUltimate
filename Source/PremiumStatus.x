@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import "Headers/SafeKVC.h"
 
 static BOOL YTMU(NSString *key) {
     NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
@@ -326,7 +327,7 @@ static BOOL YTMU(NSString *key) {
 - (id)init {
     self = %orig;
     if (self && YTMU(@"YTMUltimateIsEnabled")) {
-        [self setValue:[NSNumber numberWithBool:YES] forKey:@"_isMobileAudioTierMode"];
+        ytmu_safeSetValue(self, @"_isMobileAudioTierMode", [NSNumber numberWithBool:YES]);
     }
     return self;
 }

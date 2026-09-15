@@ -4,6 +4,7 @@
 #import <rootless.h>
 #import "Source/Headers/YTAlertView.h"
 #import "Source/Headers/Localization.h"
+#import "Source/Headers/SafeKVC.h"
 
 #define YT_BUNDLE_ID @"com.google.ios.youtubemusic"
 #define YT_BUNDLE_NAME @"YouTubeMusic"
@@ -179,8 +180,8 @@ static NSString *accessGroupID() {
 %hook SSOConfiguration
 - (id)initWithClientID:(id)clientID supportedAccountServices:(id)supportedAccountServices {
     self = %orig;
-    [self setValue:YT_NAME forKey:@"_shortAppName"];
-    [self setValue:YT_BUNDLE_ID forKey:@"_applicationIdentifier"];
+    ytmu_safeSetValue(self, @"_shortAppName", YT_NAME);
+    ytmu_safeSetValue(self, @"_applicationIdentifier", YT_BUNDLE_ID);
     return self;
 }
 - (void)setShortAppName:(id)appName { %orig(YT_NAME); }

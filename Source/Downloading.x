@@ -87,7 +87,14 @@ static YTPlayerResponse *YTMUPlayerResponse(YTPlayerViewController *playerVC) {
     }
 
     YTMNowPlayingViewController *playingVC = (YTMNowPlayingViewController *)tapRecognizer.view._viewControllerForAncestor;
-    YTMWatchViewController *watchVC = (YTMWatchViewController *)playingVC.parentViewController;
+
+    UIViewController *parentVC = playingVC.parentViewController;
+
+    if (![parentVC isKindOfClass:%c(YTMWatchViewController)] || ![parentVC respondsToSelector:@selector(playerViewController)]) {
+        return %orig;
+    }
+
+    YTMWatchViewController *watchVC = (YTMWatchViewController *)parentVC;
     YTPlayerViewController *playerVC = watchVC.playerViewController;
     YTPlayerResponse *playerResponse = YTMUPlayerResponse(playerVC);
 
@@ -132,19 +139,21 @@ static YTPlayerResponse *YTMUPlayerResponse(YTPlayerViewController *playerVC) {
     NSString *urlStr = playerResponse.playerData.streamingData.hlsManifestURL;
 
     FFMpegDownloader *ffmpeg = [[FFMpegDownloader alloc] init];
-    ffmpeg.tempName = playerVC.contentVideoID;
+    ffmpeg.tempName = [playerVC respondsToSelector:@selector(contentVideoID)] ? playerVC.contentVideoID : nil;
     ffmpeg.mediaName = [NSString stringWithFormat:@"%@ - %@", author, title];
-    ffmpeg.duration = round(playerVC.currentVideoTotalMediaTime);
+    ffmpeg.duration = [playerVC respondsToSelector:@selector(currentVideoTotalMediaTime)] ? round(playerVC.currentVideoTotalMediaTime) : 0;
 
-    
-    NSString *extractedURL = [self getURLFromManifest:[NSURL URLWithString:urlStr]];
-    
+    // No manifest means no link to extract - fall through to the "link not found" dialog
+    // rather than handing nil to +URLWithString:
+    NSString *extractedURL = urlStr.length > 0 ? [self getURLFromManifest:[NSURL URLWithString:urlStr]] : nil;
+
     if (extractedURL.length > 0) {
         [ffmpeg downloadAudio:extractedURL];
 
         NSMutableArray *thumbnailsArray = playerResponse.playerData.videoDetails.thumbnail.thumbnailsArray;
         YTIThumbnailDetails_Thumbnail *thumbnail = [thumbnailsArray lastObject];
-        NSData *imageData = [NSData dataWithContentsOfURL:[NSURL URLWithString:thumbnail.URL]];
+        NSString *thumbnailURL = thumbnail.URL;
+        NSData *imageData = thumbnailURL.length > 0 ? [NSData dataWithContentsOfURL:[NSURL URLWithString:thumbnailURL]] : nil;
 
         if (imageData) {
             NSURL *documentsURL = [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject];
@@ -197,8 +206,10 @@ static YTPlayerResponse *YTMUPlayerResponse(YTPlayerViewController *playerVC) {
     YTIThumbnailDetails_Thumbnail *thumbnail = [thumbnailsArray lastObject];
     NSString *thumbnailURL = [thumbnail.URL stringByReplacingOccurrencesOfString:[NSString stringWithFormat:@"w%u-h%u-", thumbnail.width, thumbnail.width] withString:@"w2048-h2048-"];
 
-    FFMpegDownloader *ffmpeg = [[FFMpegDownloader alloc] init];
-    [ffmpeg downloadImage:[NSURL URLWithString:thumbnailURL]];
+    if (thumbnailURL.length > 0) {
+        FFMpegDownloader *ffmpeg = [[FFMpegDownloader alloc] init];
+        [ffmpeg downloadImage:[NSURL URLWithString:thumbnailURL]];
+    }
 
     dispatch_async(dispatch_get_main_queue(), ^{
         [hud hideAnimated:YES];

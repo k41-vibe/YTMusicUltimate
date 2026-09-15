@@ -64,16 +64,29 @@
         NSDictionary *sponsorBlockValues = [self.sponsorBlockValues objectForKey:videoID];
         NSMutableDictionary *segmentSkipValues = [self.sponsorBlockValues objectForKey:@"segments"];
 
-        for (NSDictionary *jsonDictionary in sponsorBlockValues) {
+        for (id jsonObject in sponsorBlockValues) {
+            // The API response is only assumed to be an array of dictionaries - anything else
+            // must not reach -objectForKey:, and "segment" must really be a two-element array
+            if (![jsonObject isKindOfClass:[NSDictionary class]]) continue;
+
+            NSDictionary *jsonDictionary = (NSDictionary *)jsonObject;
+
             NSString *uuid = [jsonDictionary objectForKey:@"UUID"];
             if (!uuid) continue;
+
+            NSArray *segment = [jsonDictionary objectForKey:@"segment"];
+            if (![segment isKindOfClass:[NSArray class]] || segment.count < 2) continue;
+            if (![segment[0] respondsToSelector:@selector(floatValue)] || ![segment[1] respondsToSelector:@selector(floatValue)]) continue;
+
+            CGFloat segmentStart = [segment[0] floatValue];
+            CGFloat segmentEnd = [segment[1] floatValue];
 
             NSNumber *segmentSkipValue = [segmentSkipValues objectForKey:uuid];
 
             if (segmentSkipValue && [segmentSkipValue isEqual:@(1)]
                 && [[jsonDictionary objectForKey:@"category"] isEqual:@"music_offtopic"]
-                && self.currentVideoMediaTime >= [[jsonDictionary objectForKey:@"segment"][0] floatValue]
-                && self.currentVideoMediaTime <= ([[jsonDictionary objectForKey:@"segment"][1] floatValue] - 1)) {
+                && self.currentVideoMediaTime >= segmentStart
+                && self.currentVideoMediaTime <= (segmentEnd - 1)) {
 
                 [segmentSkipValues setObject:@(0) forKey:uuid];
                 [self.sponsorBlockValues setObject:segmentSkipValues forKey:@"segments"];
@@ -81,19 +94,19 @@
                 GOOHUDMessageAction *unskipAction = [[%c(GOOHUDMessageAction) alloc] init];
                 unskipAction.title = LOC(@"UNSKIP");
                 [unskipAction setHandler:^ {
-                    [self seekToTime:[[jsonDictionary objectForKey:@"segment"][0] floatValue]];
+                    [self seekToTime:segmentStart];
                 }];
                 
                 GOOHUDMessageAction *skipAction = [[%c(GOOHUDMessageAction) alloc] init];
                 skipAction.title = LOC(@"SKIP");
                 [skipAction setHandler:^ {
-                    [self seekToTime:[[jsonDictionary objectForKey:@"segment"][1] floatValue]];
+                    [self seekToTime:segmentEnd];
 
                     [[%c(YTMToastController) alloc] showMessage:LOC(@"SEGMENT_SKIPPED") HUDMessageAction:unskipAction infoType:0 duration:ytmuInt(@"sbDuration")];
                 }];
 
                 if (ytmuInt(@"sbSkipMode") == 0) {
-                    [self seekToTime:[[jsonDictionary objectForKey:@"segment"][1] floatValue]];
+                    [self seekToTime:segmentEnd];
 
                     [[%c(YTMToastController) alloc] showMessage:LOC(@"SEGMENT_SKIPPED") HUDMessageAction:unskipAction infoType:0 duration:ytmuInt(@"sbDuration")];
                 }

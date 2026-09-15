@@ -2,6 +2,7 @@
 #import "Headers/YTMNowPlayingView.h"
 #import "Headers/YTAssetLoader.h"
 #import "Headers/Localization.h"
+#import "Headers/SafeKVC.h"
 
 static NSInteger seekTime() {
     NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
@@ -9,6 +10,8 @@ static NSInteger seekTime() {
     if (YTMUltimateDict && YTMUltimateDict[@"seekTime"]) {
         NSInteger index = [YTMUltimateDict[@"seekTime"] integerValue];
         NSArray *seekTimes = @[@0, @10, @20, @30, @60];
+
+        if (index < 0 || index >= (NSInteger)seekTimes.count) return 0;
 
         return [seekTimes[index] integerValue];
     }
@@ -29,10 +32,14 @@ static BOOL YTMU(NSString *key) {
         return;
     }
 
-    YTMNowPlayingView *nowPlayingView = [self valueForKey:@"_nowPlayingView"];
+    YTMNowPlayingView *nowPlayingView = ytmu_safeValueForKey(self, @"_nowPlayingView");
 
-    if (nowPlayingView) {
+    if ([nowPlayingView respondsToSelector:@selector(playerControlsView)]) {
         YTMPlayerControlsView *controlsView = nowPlayingView.playerControlsView;
+
+        if (![controlsView respondsToSelector:@selector(prevButton)] || ![controlsView respondsToSelector:@selector(nextButton)]) {
+            return;
+        }
 
         [controlsView.prevButton removeTarget:self action:@selector(didTapPrevButton) forControlEvents:UIControlEventTouchUpInside];
         [controlsView.nextButton removeTarget:self action:@selector(didTapNextButton) forControlEvents:UIControlEventTouchUpInside];

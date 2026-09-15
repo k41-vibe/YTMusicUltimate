@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #include "Prefs/YTMUltimateSettingsController.h"
 #include "Headers/Localization.h"
+#import "Headers/SafeKVC.h"
 
 @interface YTMAccountButton : UIButton
 - (id)initWithTitle:(id)arg1 identifier:(id)arg2 icon:(id)arg3 actionBlock:(void (^)(BOOL finished))arg4;
@@ -98,7 +99,7 @@
     }
 
     YTMLightweightMessageCell *msgCell = (YTMLightweightMessageCell *)self.delegate;
-    YTIMessageRenderer *renderer = [msgCell valueForKey:@"_renderer"];
+    YTIMessageRenderer *renderer = ytmu_safeValueForKey(msgCell, @"_renderer");
 
     if (renderer.icon.iconType != 187) {
         return %orig;
