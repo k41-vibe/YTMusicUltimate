@@ -36,7 +36,9 @@ static YTPlayerResponse *YTMUPlayerResponse(YTPlayerViewController *playerVC) {
     static NSArray<NSString *> *names = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        names = @[@"playerResponse", @"currentPlayerResponse", @"lastPlayerResponse"];
+        // -contentPlayerResponse is what current builds answer to; -playerResponse is the
+        // older name and is the one that started throwing.
+        names = @[@"contentPlayerResponse", @"playerResponse", @"currentPlayerResponse", @"lastPlayerResponse"];
     });
 
     for (NSString *name in names) {
