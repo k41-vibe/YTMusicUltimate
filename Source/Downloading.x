@@ -26,13 +26,17 @@ static BOOL YTMU(NSString *key) {
 //
 // so every accessor is checked before it is called, and the names it has used are tried
 // in turn. Returns nil when none of them are there, which the callers already handle.
+//
+// Answering to one of the names is not enough on its own: every caller goes straight on to
+// read -playerData off the result, so a candidate that cannot answer that would only move
+// the unrecognized-selector crash one line down. Such a candidate is skipped.
 static YTPlayerResponse *YTMUPlayerResponse(YTPlayerViewController *playerVC) {
     if (!playerVC) return nil;
 
     static NSArray<NSString *> *names = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        names = @[@"playerResponse", @"currentPlayerResponse", @"lastPlayerResponse", @"playerData"];
+        names = @[@"playerResponse", @"currentPlayerResponse", @"lastPlayerResponse"];
     });
 
     for (NSString *name in names) {
@@ -40,7 +44,7 @@ static YTPlayerResponse *YTMUPlayerResponse(YTPlayerViewController *playerVC) {
         if (![playerVC respondsToSelector:selector]) continue;
 
         id value = ((id (*)(id, SEL))objc_msgSend)(playerVC, selector);
-        if (value) return value;
+        if (value && [value respondsToSelector:@selector(playerData)]) return value;
     }
 
     NSLog(@"[YTMusicUltimate] no player response accessor on %@", NSStringFromClass([playerVC class]));

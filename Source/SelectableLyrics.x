@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import "Headers/SafeKVC.h"
 
 static BOOL YTMU(NSString *key) {
     NSDictionary *YTMUltimateDict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"YTMUltimate"];
@@ -23,7 +24,7 @@ static BOOL selectableLyrics(void) {
 - (id)initWithFrame:(CGRect)frame {
     self = %orig;
     if (self && selectableLyrics()) {
-        UIView *container = [self valueForKey:@"_descriptionContainer"];
+        UIView *container = ytmu_safeValueForKey(self, @"_descriptionContainer");
         self.lyrics = [[UITextView alloc] init];
         self.lyrics.backgroundColor = [UIColor clearColor];
         self.lyrics.editable = NO;
@@ -38,7 +39,7 @@ static BOOL selectableLyrics(void) {
     %orig;
 
     if (selectableLyrics()) {
-        YTFormattedStringLabel *lyrics = [self valueForKey:@"_descriptionLabel"];
+        YTFormattedStringLabel *lyrics = ytmu_safeValueForKey(self, @"_descriptionLabel");
         lyrics.userInteractionEnabled = YES;
         lyrics.hidden = YES;
         self.lyrics.font = lyrics.font;
@@ -51,7 +52,7 @@ static BOOL selectableLyrics(void) {
     %orig;
 
     if (selectableLyrics()) {
-        YTFormattedStringLabel *lyrics = [self valueForKey:@"_descriptionLabel"];
+        YTFormattedStringLabel *lyrics = ytmu_safeValueForKey(self, @"_descriptionLabel");
         self.lyrics.frame = lyrics.frame;
     }
 }

@@ -26,10 +26,17 @@
                 NSMutableDictionary *segments = [NSMutableDictionary dictionary];
                 for (NSDictionary *segmentDict in jsonResponse) {
                     NSString *uuid = segmentDict[@"UUID"];
+                    if (!uuid) continue;
+
                     [segments setObject:@(1) forKey:uuid];
                 }
 
-                [self.sponsorBlockValues setObject:jsonResponse forKey:self.currentVideoID];
+                // A nil dictionary key is not ignored, it throws -- and the video ID is
+                // gone by the time this returns if playback has already been torn down.
+                NSString *videoID = self.currentVideoID;
+                if (!videoID) return;
+
+                [self.sponsorBlockValues setObject:jsonResponse forKey:videoID];
                 [self.sponsorBlockValues setObject:segments forKey:@"segments"];
             }
         }
@@ -51,11 +58,16 @@
 %new
 - (void)skipSegment {
     if (ytmuBool(@"sponsorBlock") && [NSJSONSerialization isValidJSONObject:self.sponsorBlockValues]) {
-        NSDictionary *sponsorBlockValues = [self.sponsorBlockValues objectForKey:self.currentVideoID];
+        NSString *videoID = self.currentVideoID;
+        if (!videoID) return;
+
+        NSDictionary *sponsorBlockValues = [self.sponsorBlockValues objectForKey:videoID];
         NSMutableDictionary *segmentSkipValues = [self.sponsorBlockValues objectForKey:@"segments"];
 
         for (NSDictionary *jsonDictionary in sponsorBlockValues) {
             NSString *uuid = [jsonDictionary objectForKey:@"UUID"];
+            if (!uuid) continue;
+
             NSNumber *segmentSkipValue = [segmentSkipValues objectForKey:uuid];
 
             if (segmentSkipValue && [segmentSkipValue isEqual:@(1)]

@@ -108,10 +108,22 @@
 
 - (UIImage *)tbImageNamed:(NSString *)imageName {
     BOOL isDownloads = [imageName isEqualToString:@"icons/downloads"];
+    NSBundle *bundle = isDownloads ? NSBundle.ytmu_defaultBundle : [NSBundle mainBundle];
 
-    YTAssetLoader *al = [[NSClassFromString(@"YTAssetLoader") alloc] initWithBundle:isDownloads ? NSBundle.ytmu_defaultBundle : [NSBundle mainBundle]];
+    UIImage *image = nil;
+    if (bundle) {
+        YTAssetLoader *al = [[NSClassFromString(@"YTAssetLoader") alloc] initWithBundle:bundle];
+        image = [al imageNamed:imageName];
+    }
 
-    return [al imageNamed:imageName];
+    // The downloads icon lives in the tweak's resource bundle, which is not always where
+    // it can be found. The result goes straight into an @[...] for the segmented control,
+    // and one nil there takes the app down with "attempt to insert nil object from
+    // objects[4]" the moment the tab bar settings open. Always hand back something.
+    if (!image) {
+        image = [UIImage systemImageNamed:isDownloads ? @"arrow.down.circle" : @"square"];
+    }
+    return image ?: [[UIImage alloc] init];
 }
 
 - (BOOL)tableView:(UITableView *)tableView shouldHighlightRowAtIndexPath:(NSIndexPath *)indexPath {
